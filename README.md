@@ -16,7 +16,7 @@ That's it. Press `Escape` to discard without saving. Empty notes are automatical
 
 ## Features
 
-Of course, it isn't that simple. Swiftly has many features that makes notetaking so fast:
+Of course, that's not all. Swiftly has many features that make notetaking so fast:
 
 - **Global hotkeys** — capture a note (`⌥Space`) or view all notes (`⌥⇧Space`) from any app, any time. Both shortcuts are fully customizable.
 - **Floating panel** — appears above all windows, auto-focused and ready to type. No clicking required.
@@ -55,7 +55,7 @@ Click the bolt icon in the menu bar to access:
 ## Building
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/backtosq1/Swiftly
 cd Swiftly
 xcodebuild -project Swiftly.xcodeproj -scheme Swiftly -configuration Release build
 ```
