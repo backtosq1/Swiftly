@@ -16,10 +16,14 @@ That's it. Press `Escape` to discard without saving. Empty notes are automatical
 
 ## Features
 
+Of course, it isn't that simple. Swiftly has many features that makes notetaking so fast:
+
 - **Global hotkeys** — capture a note (`⌥Space`) or view all notes (`⌥⇧Space`) from any app, any time. Both shortcuts are fully customizable.
 - **Floating panel** — appears above all windows, auto-focused and ready to type. No clicking required.
 - **Plain text storage** — notes are saved as `.txt` files (one per note, named by timestamp) in a folder you choose. No database, no proprietary format. Default location: `~/Documents/Swiftly/`.
 - **Notes browser** — searchable list of all saved notes with full-text search, inline expansion, copy, and delete.
+- **MarkDown support** - MarkDown strings are beautifully auto-formatted.
+- **Smart autocomplete** - After saving a note, typing similar words in a new note makes an inline gray ghost suggestion appear. Can be turned off in Settings.
 - **Configurable storage path** — change where notes are stored via Settings.
 - **Launch at Login** — optional, toggled in Settings.
 - **No dependencies** — pure Swift, SwiftUI, and AppKit. No third-party packages.
