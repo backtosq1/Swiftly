@@ -1,5 +1,9 @@
 import SwiftUI
 
+// MARK: - App Delegate
+
+/// Owns the shared instances (NoteStore, HotkeyManager, NotePanelController)
+/// and manages the notes and settings windows.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let noteStore = NoteStore()
     lazy var panelController = NotePanelController(noteStore: noteStore)
@@ -8,11 +12,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Wire global hotkeys to their actions
         hotkeyManager.onNoteHotkey = { [weak self] in
             self?.panelController.toggle()
         }
         hotkeyManager.onViewNotesHotkey = { [weak self] in
-            self?.showNotesWindow()
+            self?.toggleNotesWindow()
         }
         hotkeyManager.start()
     }
@@ -21,10 +26,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyManager.stop()
     }
 
-    func showNotesWindow() {
+    // MARK: - Notes window
+
+    /// Toggle the notes browser: close if visible, otherwise create and show.
+    func toggleNotesWindow() {
         if let window = notesWindow, window.isVisible {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            window.close()
             return
         }
 
@@ -43,7 +50,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         notesWindow = window
+
+        // Focus the search bar after the hosting view has laid out
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            if let textField = Self.findFirstTextField(in: window.contentView) {
+                window.makeFirstResponder(textField)
+            }
+        }
     }
+
+    /// Walk the view hierarchy to find the first editable NSTextField (the search bar).
+    private static func findFirstTextField(in view: NSView?) -> NSTextField? {
+        guard let view else { return nil }
+        if let tf = view as? NSTextField, tf.isEditable { return tf }
+        for subview in view.subviews {
+            if let found = findFirstTextField(in: subview) { return found }
+        }
+        return nil
+    }
+
+    // MARK: - Settings window
 
     func showSettingsWindow() {
         if let window = settingsWindow, window.isVisible {
@@ -76,6 +102,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+// MARK: - SwiftUI App entry point
+
 @main
 struct SwiftlyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -87,7 +115,7 @@ struct SwiftlyApp: App {
             }
 
             Button("View Notes  \(Settings.shared.viewNotesHotkey.displayString)") {
-                appDelegate.showNotesWindow()
+                appDelegate.toggleNotesWindow()
             }
 
             Divider()

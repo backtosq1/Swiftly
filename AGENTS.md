@@ -131,3 +131,114 @@ Each row shows the date and a one-line preview (first 80 characters). Clicking a
 5. **NotesListView** — Build the notes browser with search and delete.
 6. **SettingsView** — Hotkey customization and storage directory picker.
 7. **Polish** — App icon, menu bar icon, launch-at-login option, edge cases (empty note discard, very long notes).
+
+---
+
+## Feature Plan: Markdown Support & Text Autocomplete
+
+### Feasibility Assessment
+
+Both features are **feasible** within the current architecture. The app already bridges SwiftUI and AppKit, and `NotePanelController` already walks the view hierarchy to access the underlying `NSTextView`. This gives us the AppKit hooks needed for both features. However, they require replacing the SwiftUI `TextEditor` with a direct `NSTextView` wrapper for full control.
+
+### Feature 1: Live Markdown Syntax Highlighting
+
+**Goal:** As the user types Markdown in the note panel, apply inline syntax highlighting (bold text appears bold, headings appear larger, code spans get a monospace background, etc.). The editing surface stays a single plain-text editor — no split pane, no separate preview. The raw Markdown characters remain visible and editable, but styled in place.
+
+**Why not a preview pane?** Swiftly's core value is speed and zero friction. A preview pane doubles the UI surface and splits attention. Inline highlighting gives the user visual feedback without changing the interaction model.
+
+**Approach:**
+
+1. **Replace `TextEditor` with an `NSViewRepresentable` wrapping `NSTextView` directly.**
+   - File: new `MarkdownTextView.swift`
+   - The current `TextEditor` is a black box — we can't control its `NSTextStorage` or text attributes. A direct `NSTextView` gives us full access.
+   - Wire the `@Binding var text: String` to `NSTextViewDelegate.textDidChange(_:)`.
+   - Preserve existing behavior: monospaced font, scroll background hidden, padding, focus state.
+
+2. **Add a lightweight Markdown parser using `apple/swift-markdown` (SPM).**
+   - Apple's `swift-markdown` is a zero-dependency Swift package that parses CommonMark into a typed AST.
+   - We walk the AST to extract source ranges for: **bold**, *italic*, `code spans`, ## headings, - list markers, > blockquotes, [links].
+   - Output: an array of `(NSRange, [NSAttributedString.Key: Any])` style runs.
+
+3. **Apply styles to `NSTextStorage` on every text change.**
+   - File: new `MarkdownHighlighter.swift`
+   - On `textDidChange`, re-parse and re-apply attributes.
+   - Reset all attributes to the base style first (monospaced body font), then overlay Markdown styles.
+   - Styles: bold → `.boldSystemFont`, italic → italic trait, code → slightly smaller monospaced + subtle background color, headings → larger font size, blockquotes → gray foreground, links → accent color + underline.
+   - Optimization: for notes under ~5 KB (typical for Swiftly), full re-parse on every keystroke is negligible (<1 ms). No incremental parsing needed.
+
+4. **Update `NoteStore` to save as `.md` instead of `.txt`.**
+   - Change filename extension in `save()` from `.txt` to `.md`.
+   - Update `loadNotes()` filter to accept both `.txt` and `.md` for backward compatibility.
+   - No migration needed — existing `.txt` notes continue to load and display fine.
+
+5. **Update `NotesListView` to render Markdown in the expanded note view.**
+   - When a note is expanded in the list, render its content with the same `MarkdownHighlighter` styles (or a read-only attributed string view).
+
+**Files changed:**
+| File | Change |
+|------|--------|
+| `MarkdownTextView.swift` | **New.** `NSViewRepresentable` wrapping `NSTextView`. |
+| `MarkdownHighlighter.swift` | **New.** Parses Markdown, returns attributed string styles. |
+| `NotePanelContent` (in `NotePanelController.swift`) | Replace `TextEditor` with `MarkdownTextView`. |
+| `NoteStore.swift` | `.md` extension for new notes; load both `.txt` and `.md`. |
+| `NotesListView.swift` | Use styled text for expanded notes. |
+| `Package.swift` or Xcode SPM | Add `apple/swift-markdown` dependency. |
+
+**Risk:** Replacing `TextEditor` with a custom `NSTextView` wrapper is the biggest change. It requires re-implementing focus management, scroll behavior, and the two-way text binding. The existing `findTextView` hack in `NotePanelController` becomes unnecessary since we'll own the `NSTextView` directly.
+
+---
+
+### Feature 2: Text Autocomplete
+
+**Goal:** As the user types, suggest completions from their previous notes. A lightweight, local-only autocomplete that helps with frequently used phrases, names, or terms.
+
+**Approach:**
+
+1. **Build a word/phrase index from saved notes.**
+   - File: new `CompletionProvider.swift`
+   - On app launch (and after each save), scan all notes and build a frequency-sorted word list.
+   - Index multi-word phrases too: extract 2-grams and 3-grams that appear in 2+ notes.
+   - Store in memory — for hundreds of notes this is trivially small.
+
+2. **Hook into `NSTextView` completion system.**
+   - `NSTextView` has a built-in completion mechanism via `complete(_:)` and `completions(forPartialWordRange:indexOfSelectedItem:)`.
+   - Implement `NSTextViewDelegate` method to return matches from our index for the current partial word.
+   - Trigger: the native macOS `Esc` or `F5` key triggers the completion popup. But since `Esc` is used to discard notes, we'll use `⌥Esc` (the macOS default text completion shortcut) or a custom trigger.
+
+3. **Alternative: inline ghost text (more modern UX).**
+   - Instead of (or in addition to) the dropdown, show a grayed-out completion suggestion inline after the cursor.
+   - Press `Tab` to accept, keep typing to dismiss.
+   - Requires drawing the suggestion text as a temporary overlay or appending it as a styled (gray, non-editable) range.
+   - This is more complex but feels faster — aligns with Swiftly's speed-first ethos.
+
+4. **Trigger heuristics.**
+   - Only suggest after 3+ characters typed in the current word (avoids noise on every keystroke).
+   - Debounce: 150 ms after the last keystroke before computing suggestions.
+   - Don't suggest while the user is actively deleting text.
+
+**Files changed:**
+| File | Change |
+|------|--------|
+| `CompletionProvider.swift` | **New.** Builds and queries the word/phrase index. |
+| `MarkdownTextView.swift` | Add completion delegate methods and ghost-text rendering. |
+| `NoteStore.swift` | Notify `CompletionProvider` after save/load to rebuild index. |
+
+**Risk:** The ghost-text approach requires careful cursor management — the suggestion text must not interfere with the user's typing or be included when saving. The native `NSTextView` completion popup is simpler but less elegant.
+
+---
+
+### Recommended Implementation Order
+
+1. **Phase 1: `MarkdownTextView` (`NSViewRepresentable` wrapper)** — This is the foundation for both features. Replace `TextEditor` first, verify all existing behavior still works (focus, save, discard, key bindings).
+2. **Phase 2: `MarkdownHighlighter`** — Add the parser and inline styling. Start with bold, italic, code, and headings. Add more elements incrementally.
+3. **Phase 3: `CompletionProvider` + native completion popup** — Build the word index and wire it to `NSTextView`'s built-in completion. Ship the simple version first.
+4. **Phase 4 (optional): Ghost-text autocomplete** — If the popup feels too intrusive for Swiftly's minimal aesthetic, add the inline ghost-text UX.
+
+### Dependencies
+
+- `apple/swift-markdown` — [github.com/apple/swift-markdown](https://github.com/apple/swift-markdown). MIT license, maintained by Apple, pure Swift, no transitive dependencies. Added via Swift Package Manager in Xcode.
+
+### Settings Additions
+
+- `Settings.swift`: Add `markdownHighlighting: Bool` (default `true`) and `autocomplete: Bool` (default `true`) toggles.
+- `SettingsView.swift`: Add toggles in the settings UI so users can disable either feature if they prefer the original plain-text experience.

@@ -1,22 +1,23 @@
 import AppKit
 import SwiftUI
 
+// MARK: - Note panel content (SwiftUI view)
+
+/// The SwiftUI content hosted inside the floating NotePanel.
+/// Contains a monospaced TextEditor with keyboard shortcut hints.
 struct NotePanelContent: View {
     @Binding var text: String
+    var completionProvider: CompletionProvider
     var onSave: () -> Void
     var onDiscard: () -> Void
-    @FocusState private var isFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
-            TextEditor(text: $text)
-                .font(.system(.body, design: .monospaced))
-                .focused($isFocused)
-                .scrollContentBackground(.hidden)
-                .padding(8)
+            MarkdownTextView(text: $text, completionProvider: completionProvider,
+                             onSave: onSave, onDiscard: onDiscard)
 
             HStack {
-                Text("\(Settings.shared.hotkey.displayString) save · ⌘Return save · Esc discard")
+                Text("Tab complete · \(Settings.shared.hotkey.displayString) save · ⌘Return save · Esc discard")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -28,21 +29,13 @@ struct NotePanelContent: View {
             .padding(.bottom, 8)
         }
         .background(.ultraThinMaterial)
-        .onAppear { isFocused = true }
-        .onKeyPress(.escape) {
-            onDiscard()
-            return .handled
-        }
-        .onKeyPress(phases: .down) { keyPress in
-            if keyPress.key == .return && keyPress.modifiers.contains(.command) {
-                onSave()
-                return .handled
-            }
-            return .ignored
-        }
     }
 }
 
+// MARK: - Panel controller
+
+/// Manages the note panel lifecycle: show, hide, save, discard.
+/// The hotkey toggle calls `toggle()` which opens or saves+closes.
 @Observable
 final class NotePanelController {
     private var panel: NotePanel?
@@ -55,6 +48,7 @@ final class NotePanelController {
         self.noteStore = noteStore
     }
 
+    /// Toggle the panel: if visible, save and close; if hidden, open a fresh panel.
     func toggle() {
         if isVisible {
             saveAndClose()
@@ -72,6 +66,7 @@ final class NotePanelController {
                 get: { [weak self] in self?.currentText ?? "" },
                 set: { [weak self] in self?.currentText = $0 }
             ),
+            completionProvider: noteStore.completionProvider,
             onSave: { [weak self] in self?.saveAndClose() },
             onDiscard: { [weak self] in self?.discardAndClose() }
         )
@@ -83,6 +78,7 @@ final class NotePanelController {
 
         self.panel = panel
 
+        // Focus the TextEditor's underlying NSTextView after the view hierarchy is ready
         DispatchQueue.main.async {
             if let textView = self.findTextView(in: panel.contentView) {
                 panel.makeFirstResponder(textView)
@@ -105,6 +101,7 @@ final class NotePanelController {
         currentText = ""
     }
 
+    /// Walk the AppKit view hierarchy to find the NSTextView backing SwiftUI's TextEditor.
     private func findTextView(in view: NSView?) -> NSTextView? {
         guard let view else { return nil }
         if let textView = view as? NSTextView { return textView }
@@ -114,6 +111,7 @@ final class NotePanelController {
         return nil
     }
 
+    /// Position the panel slightly above center on the currently active screen.
     private func centerOnActiveScreen(_ panel: NotePanel) {
         let screen = NSScreen.main ?? NSScreen.screens.first
         guard let visibleFrame = screen?.visibleFrame else {

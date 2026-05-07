@@ -7,6 +7,8 @@ struct SettingsView: View {
     @State private var noteHotkey: HotkeyCombo = Settings.shared.hotkey
     @State private var viewNotesHotkey: HotkeyCombo = Settings.shared.viewNotesHotkey
     @State private var launchAtLogin: Bool = Settings.shared.launchAtLogin
+    @State private var markdownHighlighting: Bool = Settings.shared.markdownHighlighting
+    @State private var autocomplete: Bool = Settings.shared.autocomplete
     @State private var storagePath: String = Settings.shared.storageDirectory.path
     var onHotkeysChanged: (() -> Void)?
     var onStorageChanged: ((URL) -> Void)?
@@ -54,6 +56,14 @@ struct SettingsView: View {
                 Toggle("Launch at Login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, newValue in
                         Settings.shared.launchAtLogin = newValue
+                    }
+                Toggle("Markdown Highlighting", isOn: $markdownHighlighting)
+                    .onChange(of: markdownHighlighting) { _, newValue in
+                        Settings.shared.markdownHighlighting = newValue
+                    }
+                Toggle("Autocomplete", isOn: $autocomplete)
+                    .onChange(of: autocomplete) { _, newValue in
+                        Settings.shared.autocomplete = newValue
                     }
             }
 

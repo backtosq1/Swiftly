@@ -1,6 +1,10 @@
 import AppKit
 import SwiftUI
 
+// MARK: - Floating note panel (NSPanel subclass)
+
+/// A floating, always-on-top panel for quick note capture.
+/// Configured to stay visible across all spaces and above other windows.
 final class NotePanel: NSPanel {
     init() {
         super.init(
@@ -21,6 +25,7 @@ final class NotePanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     }
 
+    // Required so the panel can accept keyboard input
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 }

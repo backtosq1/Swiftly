@@ -88,6 +88,8 @@ final class Settings {
     private let viewNotesHotkeyCodeKey = "viewNotesHotkeyKeyCode"
     private let viewNotesHotkeyModifiersKey = "viewNotesHotkeyModifiers"
     private let storagePathKey = "storageDirectoryPath"
+    private let markdownHighlightingKey = "markdownHighlighting"
+    private let autocompleteKey = "autocomplete"
 
     var hotkey: HotkeyCombo {
         get {
@@ -145,5 +147,21 @@ final class Settings {
                 }
             } catch {}
         }
+    }
+
+    var markdownHighlighting: Bool {
+        get {
+            guard defaults.object(forKey: markdownHighlightingKey) != nil else { return true }
+            return defaults.bool(forKey: markdownHighlightingKey)
+        }
+        set { defaults.set(newValue, forKey: markdownHighlightingKey) }
+    }
+
+    var autocomplete: Bool {
+        get {
+            guard defaults.object(forKey: autocompleteKey) != nil else { return true }
+            return defaults.bool(forKey: autocompleteKey)
+        }
+        set { defaults.set(newValue, forKey: autocompleteKey) }
     }
 }

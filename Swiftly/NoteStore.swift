@@ -16,6 +16,7 @@ final class NoteStore {
     private(set) var notes: [Note] = []
 
     private let fileManager = FileManager.default
+    let completionProvider = CompletionProvider()
 
     var storageDirectory: URL {
         Settings.shared.storageDirectory
@@ -48,12 +49,12 @@ final class NoteStore {
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-        var filename = formatter.string(from: Date()) + ".txt"
+        var filename = formatter.string(from: Date()) + ".md"
         var fileURL = storageDirectory.appendingPathComponent(filename)
 
         var counter = 1
         while fileManager.fileExists(atPath: fileURL.path) {
-            filename = formatter.string(from: Date()) + "-\(counter).txt"
+            filename = formatter.string(from: Date()) + "-\(counter).md"
             fileURL = storageDirectory.appendingPathComponent(filename)
             counter += 1
         }
@@ -78,17 +79,18 @@ final class NoteStore {
         formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
 
         notes = files
-            .filter { $0.hasSuffix(".txt") }
+            .filter { $0.hasSuffix(".txt") || $0.hasSuffix(".md") }
             .compactMap { filename -> Note? in
                 let fileURL = storageDirectory.appendingPathComponent(filename)
                 guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else { return nil }
 
-                let datePart = String(filename.dropLast(4))
+                let datePart = (filename as NSString).deletingPathExtension
                     .replacingOccurrences(of: #"-\d+$"#, with: "", options: .regularExpression)
                 let date = formatter.date(from: datePart) ?? Date.distantPast
 
                 return Note(id: filename, date: date, content: content)
             }
             .sorted { $0.date > $1.date }
+        completionProvider.rebuild(from: notes)
     }
 }
