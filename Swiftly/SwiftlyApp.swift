@@ -1,4 +1,5 @@
 import SwiftUI
+import Sparkle
 
 // MARK: - App Delegate
 
@@ -8,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let noteStore = NoteStore()
     lazy var panelController = NotePanelController(noteStore: noteStore)
     let hotkeyManager = HotkeyManager()
+    let updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     private var notesWindow: NSWindow?
     private var settingsWindow: NSWindow?
 
@@ -122,6 +124,10 @@ struct SwiftlyApp: App {
 
             Button("Settings...") {
                 appDelegate.showSettingsWindow()
+            }
+
+            Button("Check for Updates...") {
+                appDelegate.updaterController.checkForUpdates(nil)
             }
 
             Button("Quit Swiftly") {

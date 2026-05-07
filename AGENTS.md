@@ -17,19 +17,23 @@ That's it. Speed is the point — no titles, no categories, no formatting. Just 
 - **Platform:** macOS (SwiftUI, AppKit for global hotkey and menu bar)
 - **Minimum target:** macOS 14 (Sonoma)
 - **Persistence:** Plain text files stored in `~/Documents/Swiftly/`, one file per note, named by timestamp (`2026-05-06_14-32-07.txt`). No database.
-- **State management:** `@Observable` classes; no external dependencies.
+- **State management:** `@Observable` classes.
+- **Dependencies:** [Sparkle 2.x](https://github.com/sparkle-project/Sparkle) for auto-updates (via SPM).
 
 ### Components
 
 | File | Purpose |
 |---|---|
-| `SwiftlyApp.swift` | App entry point. Sets up as menu bar–only app (`MenuBarExtra`). Registers the global hotkey listener. |
-| `NotePanel.swift` | The floating panel (`NSPanel`) that appears on hotkey press. Contains a single `TextEditor`. Autofocuses on appear. |
+| `SwiftlyApp.swift` | App entry point. Sets up as menu bar–only app (`MenuBarExtra`). Registers the global hotkey listener. Initializes Sparkle updater. |
+| `NotePanel.swift` | The floating panel (`NSPanel`) that appears on hotkey press. Autofocuses on appear. |
 | `NotePanelController.swift` | Manages panel lifecycle — show, hide, save-on-dismiss. Owns the toggle logic (press hotkey once to open, again to close+save). |
-| `NoteStore.swift` | Reads/writes note files to `~/Documents/Swiftly/`. Lists all saved notes sorted by date descending. Deletes notes. |
+| `NoteStore.swift` | Reads/writes note files to `~/Documents/Swiftly/`. Lists all saved notes sorted by date descending. Deletes notes. Owns `CompletionProvider`. |
 | `NotesListView.swift` | SwiftUI view showing all previous notes in a scrollable list. Opened from the menu bar icon. Supports search and delete. |
-| `SettingsView.swift` | Lets the user change the global hotkey and choose the storage directory. |
+| `SettingsView.swift` | Lets the user change the global hotkey, choose the storage directory, toggle Markdown highlighting and autocomplete. |
 | `HotkeyManager.swift` | Registers and unregisters the global hotkey using `CGEvent` tap or `NSEvent.addGlobalMonitorForEvents`. Handles Accessibility permissions prompt. |
+| `MarkdownTextView.swift` | `NSViewRepresentable` wrapping `NSTextView` with live Markdown highlighting and ghost-text autocomplete. |
+| `MarkdownHighlighter.swift` | Regex-based Markdown parser. Applies inline styles to `NSTextStorage` (bold, italic, code, headings, links, etc.). |
+| `CompletionProvider.swift` | Builds a frequency-sorted word index from saved notes. Provides prefix-based completion for ghost text. |
 | `Assets.xcassets` | Menu bar icon and app icon. |
 
 ### Data Flow
@@ -242,3 +246,39 @@ Both features are **feasible** within the current architecture. The app already 
 
 - `Settings.swift`: Add `markdownHighlighting: Bool` (default `true`) and `autocomplete: Bool` (default `true`) toggles.
 - `SettingsView.swift`: Add toggles in the settings UI so users can disable either feature if they prefer the original plain-text experience.
+
+---
+
+## Auto-Update (Sparkle)
+
+Swiftly uses [Sparkle 2.x](https://github.com/sparkle-project/Sparkle) for auto-updates. The app is distributed directly (not via App Store).
+
+### How it works
+
+- `SPUStandardUpdaterController` is initialized in `AppDelegate` at launch with `startingUpdater: true`, which starts automatic background update checks.
+- A "Check for Updates..." menu item in the menu bar dropdown triggers a manual check via `updaterController.checkForUpdates(nil)`.
+- Sparkle reads `SUFeedURL` from `Info.plist` to find the appcast.
+- On first launch, Sparkle prompts the user to opt in to automatic update checks.
+
+### Setup for publishing updates
+
+1. **Set the feed URL** — Replace `YOUR_USERNAME` in `Info.plist`'s `SUFeedURL` with your actual GitHub username:
+   ```
+   https://raw.githubusercontent.com/YOUR_USERNAME/Swiftly/main/appcast.xml
+   ```
+
+2. **Code-sign for distribution** — Sparkle requires the app to be signed with a Developer ID certificate (not just a development cert). Archive the app with `Product → Archive` in Xcode and export with "Developer ID" signing.
+
+3. **Generate an EdDSA keypair** — Sparkle uses EdDSA signatures to verify updates:
+   ```bash
+   ./bin/generate_keys  # from the Sparkle distribution
+   ```
+   This creates a keypair. The private key goes in your Keychain. The public key goes in `Info.plist` as `SUPublicEDKey`.
+
+4. **Create the appcast** — After building a signed `.app` or `.dmg`:
+   ```bash
+   ./bin/generate_appcast /path/to/updates/
+   ```
+   This produces `appcast.xml`. Commit it to the repo root (or wherever `SUFeedURL` points).
+
+5. **Publish a release** — Upload the signed `.app`/`.dmg` to GitHub Releases. Update the appcast to point to the download URL. Push `appcast.xml` to the repo.
