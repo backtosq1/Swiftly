@@ -26,7 +26,7 @@ Of course, it isn't that simple. Swiftly has many features that makes notetaking
 - **Smart autocomplete** - After saving a note, typing similar words in a new note makes an inline gray ghost suggestion appear. Can be turned off in Settings.
 - **Configurable storage path** — change where notes are stored via Settings.
 - **Launch at Login** — optional, toggled in Settings.
-- **No dependencies** — pure Swift, SwiftUI, and AppKit. No third-party packages.
+- **Update checking** - check for updates within the app, no need to manually download a new version 
 
 ## Keyboard Shortcuts
 
@@ -44,6 +44,7 @@ Click the bolt icon in the menu bar to access:
 - **New Note** — opens the capture panel
 - **View Notes** — opens the notes browser window
 - **Settings** — configure hotkeys, storage location, launch at login
+- **Check for Updates** - check for updates via Sparkle. No need to manually download the newest version
 - **Quit Swiftly**
 
 ## Requirements
@@ -65,15 +66,19 @@ Or open `Swiftly.xcodeproj` in Xcode and press `⌘R`.
 
 ```
 Swiftly/
-├── SwiftlyApp.swift          App entry point, menu bar, AppDelegate
-├── NotePanel.swift           Floating NSPanel subclass
-├── NotePanelController.swift Panel lifecycle, show/hide/save logic
-├── NoteStore.swift           Filesystem persistence (read/write/delete .txt)
-├── NotesListView.swift       Notes browser with search and delete
-├── HotkeyManager.swift       Global hotkey registration (Carbon API)
-├── Settings.swift            UserDefaults persistence, HotkeyCombo model
-├── SettingsView.swift        Settings UI with hotkey recorder and folder picker
-└── Assets.xcassets/          App icon and accent color
+├── SwiftlyApp.swift              App entry point, menu bar, AppDelegate, Sparkle updater
+├── NotePanel.swift               Floating NSPanel subclass
+├── NotePanelController.swift     Panel lifecycle, show/hide/save logic
+├── NoteStore.swift               Filesystem persistence (read/write/delete .md/.txt)
+├── NotesListView.swift           Notes browser with search, expand, and delete
+├── HotkeyManager.swift           Global hotkey registration (Carbon API)
+├── Settings.swift                UserDefaults persistence, HotkeyCombo model
+├── SettingsView.swift            Settings UI (hotkeys, storage, Markdown, autocomplete)
+├── MarkdownTextView.swift        NSTextView wrapper with live Markdown highlighting
+│                                 and ghost-text autocomplete
+├── MarkdownHighlighter.swift     Regex-based Markdown parser → NSTextStorage styles
+├── CompletionProvider.swift      Word frequency index from saved notes
+└── Assets.xcassets/              App icon and accent color
 ```
 
 ## How Notes Are Stored
@@ -88,6 +93,16 @@ Each note is a plain text file named by its creation timestamp:
 ```
 
 You can read, edit, or sync these files with any tool — they're just text. The storage folder is configurable in Settings.
+
+## Downloading, Installing, Updates
+
+### If you're downloading for the first time
+
+Get the **newest version** from GitHub Releases
+
+### If you're updating to the latest version
+
+Simply **check for updates** in the menu bar - no need to download another copy manually.
 
 ## License
 
