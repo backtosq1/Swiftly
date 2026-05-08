@@ -14,7 +14,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Wire global hotkeys to their actions
         hotkeyManager.onNoteHotkey = { [weak self] in
             self?.panelController.toggle()
         }
@@ -22,10 +21,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.toggleNotesWindow()
         }
         hotkeyManager.start()
+
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(spaceDidChange),
+            name: NSWorkspace.activeSpaceDidChangeNotification, object: nil
+        )
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         hotkeyManager.stop()
+    }
+
+    @objc private func spaceDidChange() {
+        let hasVisibleWindow = panelController.isVisible
+            || (notesWindow?.isVisible ?? false)
+            || (settingsWindow?.isVisible ?? false)
+        if hasVisibleWindow {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     // MARK: - Notes window
@@ -47,6 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = "Notes"
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 320, height: 300)
+        window.collectionBehavior = [.canJoinAllSpaces]
         window.contentView = NSHostingView(rootView: view)
         window.center()
         window.makeKeyAndOrderFront(nil)
@@ -96,6 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         window.title = "Swiftly Settings"
         window.isReleasedWhenClosed = false
+        window.collectionBehavior = [.canJoinAllSpaces]
         window.contentView = NSHostingView(rootView: view)
         window.center()
         window.makeKeyAndOrderFront(nil)

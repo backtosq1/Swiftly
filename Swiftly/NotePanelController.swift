@@ -17,7 +17,7 @@ struct NotePanelContent: View {
                              onSave: onSave, onDiscard: onDiscard)
 
             HStack {
-                Text("Tab complete · \(Settings.shared.hotkey.displayString) save · ⌘Return save · Esc discard")
+                Text("Tab to autocomplete · \(Settings.shared.hotkey.displayString) or ⌘Return to save · Esc to discard")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()

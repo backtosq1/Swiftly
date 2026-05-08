@@ -279,7 +279,7 @@ struct NotesTableView: NSViewRepresentable {
                 contentLabel.attributedStringValue = MarkdownHighlighter.attributedString(from: note.content)
                 contentLabel.isSelectable = true
             } else {
-                contentLabel.font = .systemFont(ofSize: 13)
+                contentLabel.font = MarkdownHighlighter.baseFont
                 contentLabel.textColor = .labelColor
             }
 
@@ -303,9 +303,9 @@ struct NotesTableView: NSViewRepresentable {
             let note = parent.notes[row]
             if parent.expandedNoteID == note.id {
                 let lineCount = max(note.content.components(separatedBy: .newlines).count, 2)
-                return CGFloat(28 + min(lineCount, 20) * 17)
+                return CGFloat(36 + min(lineCount, 20) * 17)
             }
-            return 44
+            return 52
         }
 
         // MARK: Selection sync → SwiftUI

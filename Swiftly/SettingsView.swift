@@ -61,7 +61,7 @@ struct SettingsView: View {
                     .onChange(of: markdownHighlighting) { _, newValue in
                         Settings.shared.markdownHighlighting = newValue
                     }
-                Toggle("Autocomplete", isOn: $autocomplete)
+                Toggle("Autocomplete (based on your previous notes)", isOn: $autocomplete)
                     .onChange(of: autocomplete) { _, newValue in
                         Settings.shared.autocomplete = newValue
                     }
@@ -100,7 +100,7 @@ struct SettingsView: View {
                 HStack {
                     Text("Version")
                     Spacer()
-                    Text("1.0")
+                    Text("1.0.1")
                         .foregroundStyle(.secondary)
                 }
             }

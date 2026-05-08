@@ -84,8 +84,13 @@ final class NoteStore {
                 let fileURL = storageDirectory.appendingPathComponent(filename)
                 guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else { return nil }
 
-                let datePart = (filename as NSString).deletingPathExtension
-                    .replacingOccurrences(of: #"-\d+$"#, with: "", options: .regularExpression)
+                let stem = (filename as NSString).deletingPathExtension
+                let datePart: String
+                if formatter.date(from: stem) != nil {
+                    datePart = stem
+                } else {
+                    datePart = stem.replacingOccurrences(of: #"-\d+$"#, with: "", options: .regularExpression)
+                }
                 let date = formatter.date(from: datePart) ?? Date.distantPast
 
                 return Note(id: filename, date: date, content: content)
