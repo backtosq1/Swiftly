@@ -5,11 +5,13 @@ import Sparkle
 
 /// Owns the shared instances (NoteStore, HotkeyManager, NotePanelController)
 /// and manages the notes and settings windows.
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     let noteStore = NoteStore()
     lazy var panelController = NotePanelController(noteStore: noteStore)
     let hotkeyManager = HotkeyManager()
     let updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+    @Published var noteHotkeyDisplay: String = Settings.shared.hotkey.displayString
+    @Published var viewNotesHotkeyDisplay: String = Settings.shared.viewNotesHotkey.displayString
     private var notesWindow: NSWindow?
     private var settingsWindow: NSWindow?
 
@@ -33,11 +35,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func spaceDidChange() {
-        let hasVisibleWindow = panelController.isVisible
-            || (notesWindow?.isVisible ?? false)
-            || (settingsWindow?.isVisible ?? false)
-        if hasVisibleWindow {
-            NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.asyncAfter(deadline: .now()) { [weak self] in
+            guard let self else { return }
+            if self.panelController.isVisible {
+                NSApp.activate(ignoringOtherApps: true)
+                self.panelController.refocus()
+            } else if let window = self.notesWindow, window.isVisible {
+                NSApp.activate(ignoringOtherApps: true)
+                window.makeKeyAndOrderFront(nil)
+            } else if let window = self.settingsWindow, window.isVisible {
+                NSApp.activate(ignoringOtherApps: true)
+                window.makeKeyAndOrderFront(nil)
+            }
         }
     }
 
@@ -97,6 +106,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let view = SettingsView(
             onHotkeysChanged: { [weak self] in
                 self?.hotkeyManager.reregister()
+                self?.noteHotkeyDisplay = Settings.shared.hotkey.displayString
+                self?.viewNotesHotkeyDisplay = Settings.shared.viewNotesHotkey.displayString
             },
             onStorageChanged: { [weak self] url in
                 self?.noteStore.updateStorageDirectory(url)
@@ -127,11 +138,11 @@ struct SwiftlyApp: App {
 
     var body: some Scene {
         MenuBarExtra("Swiftly", systemImage: "bolt.fill") {
-            Button("New Note  \(Settings.shared.hotkey.displayString)") {
+            Button("New Note  \(appDelegate.noteHotkeyDisplay)") {
                 appDelegate.panelController.toggle()
             }
 
-            Button("View Notes  \(Settings.shared.viewNotesHotkey.displayString)") {
+            Button("View Notes  \(appDelegate.viewNotesHotkeyDisplay)") {
                 appDelegate.toggleNotesWindow()
             }
 

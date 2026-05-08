@@ -44,6 +44,10 @@ final class NotePanelController {
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
+    func refocus() {
+        panel?.makeKeyAndOrderFront(nil)
+    }
+
     init(noteStore: NoteStore) {
         self.noteStore = noteStore
     }
