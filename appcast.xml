@@ -3,12 +3,12 @@
     <channel>
         <title>Swiftly</title>
         <item>
-            <title>1.0</title>
-            <pubDate>Thu, 07 May 2026 21:24:40 +0800</pubDate>
+            <title>1.0.1</title>
+            <pubDate>Sat, 09 May 2026 11:44:27 +0800</pubDate>
             <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+            <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://raw.githubusercontent.com/backtosq1/Swiftly/main/Swiftly_v1.0.dmg" length="3535757" type="application/octet-stream" sparkle:edSignature="D19t+lPj10DY/hjCZ2ZcZoNN1iQ8bI7J8DSv1xy60aD4wrZ+8/oB+Fn6KYskvuxxhyBi+AolRgvDlsJ6SHa1Cg=="/>
+            <enclosure url="https://raw.githubusercontent.com/backtosq1/Swiftly/main/Swiftly_v1.0.1.dmg" length="3541389" type="application/octet-stream" sparkle:edSignature="k4s4NrREcm5kuiujDDqOTdevfl05xrC8oq9g4PP9ykc9jZ3rAzTt5ODzDYGn/TUI9XXdzzK5ImyKTP0ztPDmCQ=="/>
         </item>
     </channel>
 </rss>
