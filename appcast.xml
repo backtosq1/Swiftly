@@ -5,7 +5,7 @@
         <item>
             <title>1.0.1</title>
             <pubDate>Sat, 09 May 2026 11:44:27 +0800</pubDate>
-            <sparkle:version>1</sparkle:version>
+            <sparkle:version>2</sparkle:version>
             <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure url="https://raw.githubusercontent.com/backtosq1/Swiftly/main/Swiftly_v1.0.1.dmg" length="3541389" type="application/octet-stream" sparkle:edSignature="k4s4NrREcm5kuiujDDqOTdevfl05xrC8oq9g4PP9ykc9jZ3rAzTt5ODzDYGn/TUI9XXdzzK5ImyKTP0ztPDmCQ=="/>
