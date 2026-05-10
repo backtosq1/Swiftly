@@ -11,6 +11,7 @@ struct NotesListView: View {
     @State private var selectedNoteID: String?
     @State private var expandedNoteID: String?
     @State private var noteToDelete: Note?
+    @State private var editedText: String?
     @FocusState private var searchFocused: Bool
 
     /// Filter notes by search text using case-insensitive substring match.
@@ -37,6 +38,9 @@ struct NotesListView: View {
                     onCopy: { note in
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(note.content, forType: .string)
+                    },
+                    onEdit: { note, content in
+                        noteStore.update(note, content: content)
                     }
                 )
             }
@@ -112,7 +116,7 @@ struct NotesListView: View {
         HStack(spacing: 16) {
             hintLabel("Tab", "navigate")
             hintLabel("↑↓", "select")
-            hintLabel("Enter", "expand")
+            hintLabel("Enter", "edit")
             hintLabel("Delete", "remove")
             hintLabel("Esc", "collapse")
         }
@@ -168,6 +172,7 @@ struct NotesTableView: NSViewRepresentable {
     @Binding var expandedNoteID: String?
     var onDelete: (Note) -> Void
     var onCopy: (Note) -> Void
+    var onEdit: (Note, String) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -222,9 +227,12 @@ struct NotesTableView: NSViewRepresentable {
 
     // MARK: - Coordinator (NSTableView delegate + data source)
 
-    final class Coordinator: NSObject, NSTableViewDelegate, NSTableViewDataSource {
+    final class Coordinator: NSObject, NSTableViewDelegate, NSTableViewDataSource, NSTextViewDelegate {
         var parent: NotesTableView
         weak var tableView: NSTableView?
+        private var editingNoteID: String?
+        private var editedText: String?
+        private weak var activeTextView: NSTextView?
 
         private let dateFormatter: DateFormatter = {
             let f = DateFormatter()
@@ -235,6 +243,38 @@ struct NotesTableView: NSViewRepresentable {
 
         init(parent: NotesTableView) {
             self.parent = parent
+        }
+
+        // MARK: Editing helpers
+
+        func saveEditingIfNeeded() {
+            guard let noteID = editingNoteID,
+                  let text = editedText,
+                  let note = parent.notes.first(where: { $0.id == noteID }),
+                  text != note.content else { return }
+            parent.onEdit(note, text)
+            editingNoteID = nil
+            editedText = nil
+            activeTextView = nil
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            editedText = textView.string
+        }
+
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                saveEditingIfNeeded()
+                parent.expandedNoteID = nil
+                if let tableView {
+                    animateRowHeights(tableView)
+                    tableView.reloadData()
+                    tableView.window?.makeFirstResponder(tableView)
+                }
+                return true
+            }
+            return false
         }
 
         // MARK: Data source
@@ -271,20 +311,60 @@ struct NotesTableView: NSViewRepresentable {
             dateLabel.font = .systemFont(ofSize: 11)
             dateLabel.textColor = .secondaryLabelColor
 
-            // Content: full text when expanded, single-line preview otherwise
-            let contentLabel = NSTextField(wrappingLabelWithString: note.preview)
-            contentLabel.maximumNumberOfLines = isExpanded ? 0 : 1
-            contentLabel.lineBreakMode = isExpanded ? .byWordWrapping : .byTruncatingTail
+            // Content: editable text view when expanded, single-line preview otherwise
             if isExpanded {
-                contentLabel.attributedStringValue = MarkdownHighlighter.attributedString(from: note.content)
-                contentLabel.isSelectable = true
+                let textContainer = NSTextContainer()
+                textContainer.widthTracksTextView = true
+                textContainer.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
+                let layoutManager = NSLayoutManager()
+                layoutManager.addTextContainer(textContainer)
+                let textStorage = NSTextStorage(string: note.content, attributes: [
+                    .font: MarkdownHighlighter.baseFont,
+                    .foregroundColor: NSColor.labelColor,
+                ])
+                textStorage.addLayoutManager(layoutManager)
+
+                let textView = NSTextView(frame: .zero, textContainer: textContainer)
+                textView.font = MarkdownHighlighter.baseFont
+                textView.textColor = .labelColor
+                textView.drawsBackground = false
+                textView.isEditable = true
+                textView.isSelectable = true
+                textView.isVerticallyResizable = true
+                textView.isHorizontallyResizable = false
+                textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+                textView.autoresizingMask = [.width]
+                textView.textContainerInset = NSSize(width: 0, height: 0)
+                textView.delegate = self
+                MarkdownHighlighter.highlight(textStorage)
+
+                let scrollView = NSScrollView()
+                scrollView.hasVerticalScroller = true
+                scrollView.autohidesScrollers = true
+                scrollView.drawsBackground = false
+                scrollView.documentView = textView
+                scrollView.translatesAutoresizingMaskIntoConstraints = false
+
+                stack.addArrangedSubview(dateLabel)
+                stack.addArrangedSubview(scrollView)
+
+                editingNoteID = note.id
+                editedText = note.content
+                activeTextView = textView
+
+                DispatchQueue.main.async {
+                    textView.window?.makeFirstResponder(textView)
+                }
             } else {
+                let contentLabel = NSTextField(wrappingLabelWithString: note.preview)
+                contentLabel.maximumNumberOfLines = 1
+                contentLabel.lineBreakMode = .byTruncatingTail
                 contentLabel.font = MarkdownHighlighter.baseFont
                 contentLabel.textColor = .labelColor
-            }
 
-            stack.addArrangedSubview(dateLabel)
-            stack.addArrangedSubview(contentLabel)
+                stack.addArrangedSubview(dateLabel)
+                stack.addArrangedSubview(contentLabel)
+            }
 
             cell.addSubview(stack)
             NSLayoutConstraint.activate([
@@ -316,14 +396,15 @@ struct NotesTableView: NSViewRepresentable {
             if row >= 0 && row < parent.notes.count {
                 let note = parent.notes[row]
                 if parent.selectedNoteID != note.id {
+                    saveEditingIfNeeded()
                     parent.selectedNoteID = note.id
-                    // Collapse any expanded note when selection changes
                     if parent.expandedNoteID != nil {
                         parent.expandedNoteID = nil
                         animateRowHeights(tableView)
                     }
                 }
             } else {
+                saveEditingIfNeeded()
                 parent.selectedNoteID = nil
             }
         }
@@ -339,8 +420,10 @@ struct NotesTableView: NSViewRepresentable {
             switch Int(event.keyCode) {
             case 0x24: // Return — toggle expand/collapse with animation
                 if parent.expandedNoteID == note.id {
+                    saveEditingIfNeeded()
                     parent.expandedNoteID = nil
                 } else {
+                    saveEditingIfNeeded()
                     parent.expandedNoteID = note.id
                 }
                 animateRowHeights(tableView)
@@ -353,6 +436,7 @@ struct NotesTableView: NSViewRepresentable {
 
             case 0x35: // Escape — collapse expanded note, or deselect
                 if parent.expandedNoteID != nil {
+                    saveEditingIfNeeded()
                     parent.expandedNoteID = nil
                     animateRowHeights(tableView)
                     tableView.reloadData()
@@ -384,6 +468,10 @@ struct NotesTableView: NSViewRepresentable {
         func makeContextMenu() -> NSMenu {
             let menu = NSMenu()
 
+            let editItem = NSMenuItem(title: "Edit", action: #selector(editNote(_:)), keyEquivalent: "")
+            editItem.target = self
+            menu.addItem(editItem)
+
             let copyItem = NSMenuItem(title: "Copy", action: #selector(copyNote(_:)), keyEquivalent: "c")
             copyItem.target = self
             menu.addItem(copyItem)
@@ -395,6 +483,16 @@ struct NotesTableView: NSViewRepresentable {
             menu.addItem(deleteItem)
 
             return menu
+        }
+
+        @objc func editNote(_ sender: Any?) {
+            guard let tableView, tableView.clickedRow >= 0 else { return }
+            let note = parent.notes[tableView.clickedRow]
+            saveEditingIfNeeded()
+            parent.selectedNoteID = note.id
+            parent.expandedNoteID = note.id
+            animateRowHeights(tableView)
+            tableView.reloadData()
         }
 
         @objc func copyNote(_ sender: Any?) {

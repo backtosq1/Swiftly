@@ -63,6 +63,14 @@ final class NoteStore {
         loadNotes()
     }
 
+    func update(_ note: Note, content: String) {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let fileURL = storageDirectory.appendingPathComponent(note.id)
+        try? trimmed.write(to: fileURL, atomically: true, encoding: .utf8)
+        loadNotes()
+    }
+
     func delete(_ note: Note) {
         let fileURL = storageDirectory.appendingPathComponent(note.id)
         try? fileManager.removeItem(at: fileURL)
