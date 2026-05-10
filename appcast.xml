@@ -8,7 +8,7 @@
             <sparkle:version>2</sparkle:version>
             <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://raw.githubusercontent.com/backtosq1/Swiftly/main/Swiftly_v1.0.1.dmg" length="3541389" type="application/octet-stream" sparkle:edSignature="k4s4NrREcm5kuiujDDqOTdevfl05xrC8oq9g4PP9ykc9jZ3rAzTt5ODzDYGn/TUI9XXdzzK5ImyKTP0ztPDmCQ=="/>
+            <enclosure url="https://github.com/backtosq1/Swiftly/releases/download/v1.0.1/Swiftly_v1.0.1.dmg" length="3541389" type="application/octet-stream" sparkle:edSignature="k4s4NrREcm5kuiujDDqOTdevfl05xrC8oq9g4PP9ykc9jZ3rAzTt5ODzDYGn/TUI9XXdzzK5ImyKTP0ztPDmCQ=="/>
         </item>
     </channel>
 </rss>
