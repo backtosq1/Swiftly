@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/backtosq1/Swiftly/main/appcast.xml</string>
+	<string>https://github.com/backtosq1/Swiftly/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>FUd8H2rcgDzvvMBXCBbLl8pBUHFiI3Un0UJRAMvnEvo=</string>
 </dict>
